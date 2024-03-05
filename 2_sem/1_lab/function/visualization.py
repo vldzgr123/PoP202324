@@ -4,11 +4,13 @@ import numpy as np
 import streamlit as st
 
 
-class VisualizationDataClassification:
-    def __init__(self, data):
+class Visualization:
+    def __init__(self, data, typeModel):
         self.data = data
+        self.typeModel = typeModel
 
-    def HeatMap(self):
+    def VisualizationClassification(self):
+
         st.write("Тепловая карта")
         df_num = self.data.select_dtypes(include=np.number)
         df_corr = df_num.corr()
@@ -16,7 +18,6 @@ class VisualizationDataClassification:
         sns.heatmap(df_corr, annot=True)
         st.pyplot(plt)
 
-    def BoxPlot(self):
         st.write("Ящик с усами")
         df_num = self.data.select_dtypes(include=np.number)
         plt.figure(figsize=(16, 8))
@@ -28,28 +29,23 @@ class VisualizationDataClassification:
         plt.tight_layout()
         st.pyplot(plt)
 
-    def BarChart(self):
         st.write("Гистограмма")
-        columns = ["ct_money", "t_money"]
+        columns = ["Size", "Weight"]
         for col in columns:
             plt.figure(figsize=(8, 6))
             sns.histplot(self.data[col], bins=100, kde=True)
             plt.title(f"Гистограмма для {col}")
             st.pyplot(plt)
-            
-    def PieСhart(self):
+
         st.write("Круговая диаграмма")
         plt.figure(figsize=(8, 8))
-        self.data["bomb_planted"].value_counts().plot.pie(autopct="%1.1f%%")
-        plt.title("bomb_planted")
+        self.data["Quality"].value_counts().plot.pie(autopct="%1.1f%%")
+        plt.title("Quality")
         plt.ylabel("")
         st.pyplot(plt)
-        
-class VisualizationDataRegression:
-    def __init__(self, data):
-        self.data = data
 
-    def HeatMap(self):
+    def VisualizationRegression(self):
+
         st.write("Тепловая карта")
         df_num = self.data.select_dtypes(include=np.number)
         df_corr = df_num.corr()
@@ -57,7 +53,6 @@ class VisualizationDataRegression:
         sns.heatmap(df_corr, annot=True)
         st.pyplot(plt)
 
-    def BoxPlot(self):
         st.write("Ящик с усами")
         df_num = self.data.select_dtypes(include=np.number)
         plt.figure(figsize=(16, 8))
@@ -69,19 +64,24 @@ class VisualizationDataRegression:
         plt.tight_layout()
         st.pyplot(plt)
 
-    def BarChart(self):
         st.write("Гистограмма")
-        columns = ["price", "sqft_living"]
+        columns = ["price", "area"]
         for col in columns:
             plt.figure(figsize=(8, 6))
             sns.histplot(self.data[col], bins=100, kde=True)
             plt.title(f"Гистограмма для {col}")
             st.pyplot(plt)
-            
-    def PieСhart(self):
+
         st.write("Круговая диаграмма")
         plt.figure(figsize=(8, 8))
-        self.data["floors"].value_counts().plot.pie(autopct="%1.1f%%")
-        plt.title("floors")
+        self.data["stories"].value_counts().plot.pie(autopct="%1.1f%%")
+        plt.title("stories")
         plt.ylabel("")
         st.pyplot(plt)
+
+    def Show(self):
+        st.header("Вузуализация датасета")
+        if self.typeModel == "Регрессия":
+            self.VisualizationRegression()
+        else:
+            self.VisualizationClassification()
