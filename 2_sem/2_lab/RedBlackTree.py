@@ -1,9 +1,10 @@
 class Node:
-    def __init__(self, key, isRed=False):
+    def __init__(self, key):
         self.key = key
+        self.name = key
         self.right = None
         self.left = None
-        self.isRed = isRed
+        self.isRed = False
 
 
 class RedBlackTree:
@@ -18,12 +19,19 @@ class RedBlackTree:
     def _InsertNode(self, parent, node):
         if parent.key > node.key:
             if parent.right is None:
+                if parent.isRed == False:
+                    node.isRed = True
+                else:
+                    node.isRed = False
                 parent.right = node
             else:
                 self._InsertNode(parent.right, node)
         else:
             if parent.left is None:
+                if parent.isRed == False:
+                    node.isRed = True
+                else:
+                    node.isRed = False
                 parent.left = node
             else:
                 self._InsertNode(parent.left, node)
-
