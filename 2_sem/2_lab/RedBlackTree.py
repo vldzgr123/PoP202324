@@ -6,21 +6,6 @@ class Node:
         self.left = None
         self.isRed = True
 
-    def _getGrandPa(self):
-        if self.key != None and self.parent != None:
-            return self.parent.parent
-        else:
-            return None
-
-    def _getUncle(self):
-        grandParent = self._getGrandPa()
-        if grandParent == None:
-            return None
-        if self.parent == grandParent.left:
-            return grandParent.right
-        else:
-            return grandParent.left
-
 
 class RedBlackTree:
     def __init__(self):
