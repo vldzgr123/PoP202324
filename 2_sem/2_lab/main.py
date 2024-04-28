@@ -1,11 +1,24 @@
 from RedBlackTree import RedBlackTree
-import streamlit as st
+import os
 
-st.title('Лабораторная по дисциплине "Практикум по программированию" №2.')
-st.header("Реализация Красно-черного дерева.")
-numbers = st.text_input("Впишите через пробел значения дерева:").split(" ")
-button = st.button("Визуализировать")
-if button:
-    tree = RedBlackTree(int(numbers[0]))
-    for key in numbers[1::]:
-        tree.Insert(int(key))
+clear = lambda: os.system('cls')
+
+
+print("Введите первый элемент красно-черного дерева:")
+n = input()
+tree = RedBlackTree(n)
+while(n!="0"):
+    clear()
+    print("------------------------------------------------------------------")
+    print("1. Добавить элемент")
+    print("0. Выход")
+    print("------------------------------------------------------------------")
+    n = input()
+    clear()
+    match n:
+        case "1":
+            print("Введите элемент:")
+            el = int(input())
+            tree.Insert(el)
+            
+            
