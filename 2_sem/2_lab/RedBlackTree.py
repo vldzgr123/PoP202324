@@ -3,32 +3,31 @@ from typing import Any
 
 
 class Node:
-    def __init__(self, key, isRed=True):
+    def __init__(self, key, isRed=True) -> None:
         self.key = key
         self.right = None
         self.left = None
         self.isRed = isRed
         self.parent = None
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name in ["right", "left"]:
-            value.parent = self
-            object.__setattr__(self, name, value)
-        else:
-            object.__setattr__(self, name, value)
-
-    def __str__(self) -> str:
-        return f'({self.key} - {"RED" if self.isRed==True else "BLACK"})'
+    def __str__(self):
+        if self.parent != None and self.key != None:
+            return f'({self.key} - {"RED" if self.isRed==True else "BLACK"} - PARENT {self.parent.key} - {"LEFT" if self.parent.left == self else "RIGHT"})'
+        elif self.parent == None and self.key != None:
+            return f'({self.key} - {"RED" if self.isRed==True else "BLACK"} - ROOT)'
+        return f"(BLACK NIL)"
 
 
 class RedBlackTree:
-    def __init__(self, key):
+    def __init__(self, key) -> None:
         self.nil = Node(None, isRed=False)
         self.root = Node(key, isRed=False)
-        self.right = self.nil
-        self.left = self.nil
+        self.root.right = self.nil
+        self.root.left = self.nil
 
-    def Insert(self, key):
+    def Insert(self, key) -> Any:
+        if self.__search(self.root, key) != None:
+            return False
         newNode = Node(key)
         current = self.root
         parent = current
@@ -46,81 +45,99 @@ class RedBlackTree:
         newNode.right = self.nil
         newNode.left = self.nil
         self.__fixInsert(newNode)
+        return True
 
-    def __fixInsert(self, n):
+    def __fixInsert(self, n) -> None:
         u = self.__getUncle(n)
+        g = self.__getGrandparent(n)
         if n.parent.isRed == True:
             if u.isRed == True:
                 self.__fixUncleRed(n)
             else:
-                if n.parent.left == n:
-                    self.__fixUncleBlackLeft(n.parent)
+                if g.left == n.parent:
+                    if n.parent.left == n:
+                        self.__smallRotateRight(n.parent)
+                        n.parent.isRed = False
+                        n.parent.right.isRed = True
+                    else:
+                        self.__smallRotateLeft(n)
+                        self.__smallRotateRight(n)
+                        n.isRed = False
+                        n.right.isRed = True
                 else:
-                    self.__fixUncleBlackRight(n)
-
-    def __fixUncleBlackRight(self, n):
-        self.__smallRotateRight(n)
-        n.parent.isRed = False
-        n.parent.right.isRed = True
-
-    def __fixUncleBlackLeft(self, n):
-        self.__smallRotateRight(n.parent)
-        n.parent.isRed = False
-        n.parent.right.isRed = True
+                    if n.parent.right == n:
+                        self.__smallRotateLeft(n.parent)
+                        n.parent.isRed = False
+                        n.parent.left.isRed = True
+                    else:
+                        self.__smallRotateRight(n)
+                        self.__smallRotateLeft(n)
+                        n.isRed = False
+                        n.left.isRed = True
+                        
 
     def __smallRotateRight(self, n):
         p = n.parent
         g = self.__getGrandparent(n)
         n.parent = g
-        p.parent = n 
-        if g.left == p.left: g.left = n
-        else: g.right = n
-        p.left = n.right  
-        n.right = p.left 
-        
+        p.parent = n
+        if p != self.root:
+            if g.left == p:
+                g.left = n
+            else:
+                g.right = n
+        else:
+            self.root = n
+        p.left = n.right
+        n.right = p
+
     def __smallRotateLeft(self, n):
         p = n.parent
         g = self.__getGrandparent(n)
         n.parent = g
-        p.parent = n 
-        if g.left == p.left: g.left = n
-        else: g.right = n
-        p.left = n.right  
-        n.right = p.left 
-        
-        
+        p.parent = n
+        if p != self.root:
+            if g.left == p:
+                g.left = n
+            else:
+                g.right = n
+        else:
+            self.root = n
+        p.right = n.left
+        n.left = p
 
     def __fixUncleRed(self, n):
         u = self.__getUncle(n)
-        if n.isRed == True and n == self.root:
+        if n == self.root:
             n.isRed == False
         elif n.parent.isRed == True and u.isRed == True:
             self.__getUncle(n).isRed == False
             g = self.__getGrandparent(n)
             g.isRed = True
             n.parent.isRed = False
+            u.isRed = False
             self.__fixUncleRed(g)
 
-    def Search(self, key):
+    def Search(self, key) -> Node:
         return self.__search(self.root, key)
 
-    def __search(self, node, key):
+    def __search(self, node, key) -> Any:
         if node == self.nil:
             return None
         if key > node.key:
-            self._search(node.right, key)
+            self.__search(node.right, key)
         elif key < node.key:
-            self._search(node.left, key)
+            self.__search(node.left, key)
         else:
             return node
 
-    def __getGrandparent(self, node):
+    def __getGrandparent(self, node) -> Node:
         if node.parent != None:
             return node.parent.parent
         else:
             return None
 
-    def __getUncle(self, node):
+    def __getUncle(self, node) -> Node:
         grandpa = self.__getGrandparent(node)
         if grandpa != None:
             if grandpa.left == node.parent:
@@ -130,87 +147,31 @@ class RedBlackTree:
         else:
             return None
 
-    def leftRotate(self, n):
-        pivot = n.right
-        pivot = n.parent
-        if n.parent != None:
-            if n.parent.left == n:
-                n.parent.left = pivot
-            else:
-                n.parent.right = pivot
+    def __str__(self):
+        print(
+            "------------------------------------------------------------------------"
+        )
+        root = self.root
+        print(root)
+        childs = [root.left, root.right]
+        print(root.left, root.right)
+        while len(list(set(childs))) != 1:
+            newChilds = []
+            for child in childs:
+                if child == self.nil:
+                    continue
+                for i in ["left", "right"]:
+                    c = child.__getattribute__(i)
+                    newChilds.append(c)
+                    print(c, end=" ")
+            childs = newChilds
+            print()
+        return (
+            "------------------------------------------------------------------------"
+        )
 
-        n.right = pivot.left
-        if pivot.left != None:
-            pivot.left.parent = n
-
-        n.parent = pivot
-        pivot.left = n
-
-    def rightRotate(self, n):
-        pivot = n.left
-        pivot = n.parent
-        if n.parent != None:
-            if n.parent.left == n:
-                n.parent.left = pivot
-            else:
-                n.parent.right = pivot
-
-        n.left = pivot.right
-        if pivot.left != None:
-            pivot.left.parent = n
-
-        n.parent = pivot
-        pivot.left = n
-
-    # def __insertCase1(self, node):
-    #     if node.parent == None:
-    #         node.isRed = False
-    #     else:
-    #         self.__insertCase2(node)
-
-    # def __insertCase2(self, node):
-    #     if node.parent.isRed == False:
-    #         return
-    #     else:
-    #         self.__insertCase3(node)
-
-    # def __insertCase3(self, node):
-    #     uncle = self.getUncle(node)
-
-    #     if uncle != None and uncle.isRed == True:
-    #         node.parent.isRed = False
-    #         uncle.isRed = False
-    #         grandparent = self.getGrandparent(node)
-    #         grandparent.isRed = False
-    #         self.__insertCase1(grandparent)
-    #     else:
-    #         self.__insertCase4(node)
-
-    # def __insertCase4(self, node):
-    #     grandparent = self.getGrandparent(node)
-
-    #     if node == node.parent.right and node.parent == grandparent.left:
-    #         self.leftRotate(node.parent)
-    #         node = node.left
-    #     elif node == node.parent.left and node.parent == grandparent.right:
-    #         self.rightRotate(node.parent)
-    #         node = node.right
-    #     self.__insertCase5(node)
-
-    # def __insertCase5(self, node):
-    #     grandparent = self.getGrandparent(node)
-    #     node.parent.isRed = False
-    #     grandparent.isRed = True
-    #     if node == node.parent.left and node.parent == grandparent.left:
-    #         self.rightRotate(grandparent)
-    #     else:
-    #         self.leftRotate(grandparent)
-
-
-if __name__ == "__main__"
-    fir = Node(1)
-    sec = Node(2)
-    thr = Node(3)
-    fir.right = sec
-    print(sec.__dict__)
-    print(fir.__dict__)
+if __name__ == "__main__":
+    tree = RedBlackTree(1)
+    tree.Insert(2)
+    tree.Insert(3)
+    print(tree)
