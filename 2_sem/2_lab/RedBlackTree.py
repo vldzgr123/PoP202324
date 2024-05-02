@@ -1,14 +1,13 @@
-from platform import node
 from typing import Any
 
 
 class Node:
-    def __init__(self, key, isRed=True) -> None:
+    def __init__(self, key, isRed=True, right=None, left=None, parent=None) -> None:
         self.key = key
-        self.right = None
-        self.left = None
+        self.right = right
+        self.left = left
         self.isRed = isRed
-        self.parent = None
+        self.parent = parent
 
     def __str__(self):
         if self.parent != None and self.key != None:
@@ -19,11 +18,9 @@ class Node:
 
 
 class RedBlackTree:
-    def __init__(self, key) -> None:
+    def __init__(self) -> None:
         self.nil = Node(None, isRed=False)
-        self.root = Node(key, isRed=False)
-        self.root.right = self.nil
-        self.root.left = self.nil
+        self.root = self.nil
 
     def Insert(self, key) -> Any:
         if self.__search(self.root, key) != None:
@@ -31,6 +28,11 @@ class RedBlackTree:
         newNode = Node(key)
         current = self.root
         parent = current
+        if self.root == self.nil:
+            self.root = Node(key, isRed=False)
+            self.root.right = self.nil
+            self.root.left = self.nil
+            return True
         while current != self.nil:
             parent = current
             if current.key <= key:
@@ -56,27 +58,26 @@ class RedBlackTree:
             else:
                 if g.left == n.parent:
                     if n.parent.left == n:
-                        self.__smallRotateRight(n.parent)
+                        self.__rotateRight(n.parent)
                         n.parent.isRed = False
                         n.parent.right.isRed = True
                     else:
-                        self.__smallRotateLeft(n)
-                        self.__smallRotateRight(n)
+                        self.__rotateLeft(n)
+                        self.__rotateRight(n)
                         n.isRed = False
                         n.right.isRed = True
                 else:
                     if n.parent.right == n:
-                        self.__smallRotateLeft(n.parent)
+                        self.__rotateLeft(n.parent)
                         n.parent.isRed = False
                         n.parent.left.isRed = True
                     else:
-                        self.__smallRotateRight(n)
-                        self.__smallRotateLeft(n)
+                        self.__rotateRight(n)
+                        self.__rotateLeft(n)
                         n.isRed = False
                         n.left.isRed = True
-                        
 
-    def __smallRotateRight(self, n):
+    def __rotateRight(self, n):
         p = n.parent
         g = self.__getGrandparent(n)
         n.parent = g
@@ -91,7 +92,7 @@ class RedBlackTree:
         p.left = n.right
         n.right = p
 
-    def __smallRotateLeft(self, n):
+    def __rotateLeft(self, n):
         p = n.parent
         g = self.__getGrandparent(n)
         n.parent = g
@@ -109,8 +110,9 @@ class RedBlackTree:
     def __fixUncleRed(self, n):
         u = self.__getUncle(n)
         if n == self.root:
-            n.isRed == False
-        elif n.parent.isRed == True and u.isRed == True:
+            n.isRed = False
+            return
+        if n.parent.isRed == True and u.isRed == True:
             self.__getUncle(n).isRed == False
             g = self.__getGrandparent(n)
             g.isRed = True
@@ -118,18 +120,18 @@ class RedBlackTree:
             u.isRed = False
             self.__fixUncleRed(g)
 
-    def Search(self, key) -> Node:
+    def Search(self, key):
         return self.__search(self.root, key)
 
-    def __search(self, node, key) -> Any:
-        if node == self.nil:
+    def __search(self, n, key):
+        if n == self.nil or n == None:
             return None
-        if key > node.key:
-            self.__search(node.right, key)
-        elif key < node.key:
-            self.__search(node.left, key)
+        if key > n.key:
+            return self.__search(n.right, key)
+        elif key < n.key:
+            return self.__search(n.left, key)
         else:
-            return node
+            return n
 
     def __getGrandparent(self, node) -> Node:
         if node.parent != None:
@@ -153,8 +155,11 @@ class RedBlackTree:
         )
         root = self.root
         print(root)
-        childs = [root.left, root.right]
-        print(root.left, root.right)
+        try:
+            childs = [root.left, root.right]
+            print(root.left, root.right)
+        except:
+            return "Tree empty!"
         while len(list(set(childs))) != 1:
             newChilds = []
             for child in childs:
@@ -170,8 +175,137 @@ class RedBlackTree:
             "------------------------------------------------------------------------"
         )
 
+    def Erase(self, key) -> bool:
+        n = self.__search(self.root, key)
+        if n == None:
+            return False
+        p = n.parent
+        if n.left == self.nil and n.right == self.nil:
+            if n.isRed == True:
+                self.__eraseZeroChild(n)
+            else:
+                if n.parent.isRed == True:
+                    u = self.__getUncle(n)
+                    self.__eraseZeroChild(n)
+                    if self.root == self.nil: return True
+                    elif (u.left != self.nil or u.right != self.nil) and (u.right.isRed == True or u.left.isRed == True):
+                        self.__erasefixZeroChildBlackRedPNCF(u)
+                    else:
+                        u.isRed = True
+                        u.parent.isRed = False
+                else:
+                    u = self.__getUncle(n)
+                    if u.isRed == True:
+                        
+                self.__erasefixZeroChildBlack(n)
+        elif (
+            n.left != self.nil
+            and n.right == self.nil
+            or n.left == self.nil
+            and n.right != self.nil
+        ):
+            self.__eraseOneChild(n)
+        else:
+            self.__eraseTwoChild(n)
+
+        return True
+
+    def Clear(self):
+        self.root = self.nil
+    
+    # происходит относительно дяди удаляемого объекта    
+    def __erasefixZeroChildBlackRedPNCF(self, n):
+        if n.parent.left == n:
+            if n.left != self.nil and n.right == self.nil:
+                self.__rotateRight(n)
+                n.isRed = True
+                n.left.isRed = False
+                n.right = True
+            else:
+                self.__rotateLeft(n.right)
+                self.__rotateRight(n.parent)
+                n.parent.right.isRed = False
+        else:
+            if n.left == self.nil and n.right != self.nil:
+                self.__rotateLeft(n)
+                n.isRed = True
+                n.left.isRed = False
+                n.left = True
+            else:
+                self.__rotateRight(n.left)
+                self.__rotateLeft(n.parent)
+                n.parent.left.isRed = False
+            
+    def __eraseZeroChild(self, n):
+        if self.root == n:
+            self.root = self.nil
+        else:
+            if n.parent.left == n:
+                n.parent.left = self.nil
+            else:
+                n.parent.right = self.nil
+            n = self.nil
+
+    def __eraseOneChild(self, n):
+        if self.root == n:
+            if n.left != self.nil:
+                self.root = n.left
+            else:
+                self.root = n.right
+        else:
+            tmp = n
+            p = n.parent
+            if n.left != self.nil:
+                tmp = n.left
+            else:
+                tmp = n.right
+            if p.left == n:
+                p.left = tmp
+            else:
+                p.right = tmp
+            tmp.parent = p
+            tmp.isRed = False
+            n.parent = None
+            n.left = None
+            n.right = None
+
+    def __eraseTwoChild(self, n):
+        maxNode = self.__searchMax(n.left)
+        if n == self.root:
+            maxNode.parent.right = self.nil
+            maxNode.parent = None
+            n.left.parent = maxNode
+            maxNode.left = n.left
+            n.left = None
+            n.parent = None
+        else:
+            maxNode.parent.right = self.nil
+            maxNode.parent = n.parent
+            if n.parent.left == n:
+                n.parent.left = maxNode
+            else:
+                n.parent.right = maxNode
+            n.left.parent = maxNode
+            maxNode.left = n.left
+            n.left = None
+            n.parent = None
+        self.Erase(maxNode)
+    
+    def __searchMax(self, n) -> Any:
+        if n==None or n == self.nil: return None
+        current = n
+        while True:
+            if current.left == self.nil: return current
+            else: current = current.left
+
+    def 
+
 if __name__ == "__main__":
-    tree = RedBlackTree(1)
-    tree.Insert(2)
+    tree = RedBlackTree()
+    tree.Insert(0)
+    tree.Insert(1)
     tree.Insert(3)
+    tree.Insert(2)
+    print(tree)
+    tree.Erase(2)
     print(tree)
