@@ -196,7 +196,7 @@ class RedBlackTree:
                 else:
                     u = self.__getUncle(n)
                     if u.isRed == True:
-                        
+                        if u.right. 
                 self.__erasefixZeroChildBlack(n)
         elif (
             n.left != self.nil
