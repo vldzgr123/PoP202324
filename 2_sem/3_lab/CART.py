@@ -1,113 +1,156 @@
 import numpy as np
 
-class CART:
-    def __init__(self, max_depth=3, min_size=1):
+class DecisionTreeNode:
+    def __init__(self, impurity, num_samples, value):
+        self.impurity = impurity
+        self.num_samples = num_samples
+        self.value = value
+        self.feature_index = 0
+        self.threshold = 0
+        self.left = None
+        self.right = None
+
+class DecisionTreeClassifier:
+    def __init__(self, max_depth=None, min_samples_split=2):
         self.max_depth = max_depth
-        self.min_size = min_size
+        self.min_samples_split = min_samples_split
         self.tree = None
 
     def fit(self, X, y):
-        dataset = [list(X[i]) + [y[i]] for i in range(len(X))]
-        self.tree = self.build_tree(dataset)
+        self.n_classes = len(set(y))
+        self.tree = self._grow_tree(X, y)
 
-    def predict(self, row):
-        return self._predict(self.tree, row)
+    def predict(self, X):
+        return np.array([self._predict(inputs) for inputs in X])
 
-    def build_tree(self, train):
-        root = self.get_split(train)
-        self.split(root, 1)
-        return root
+    def _gini(self, y):
+        m = len(y)
+        return 1.0 - sum((np.sum(y == c) / m) ** 2 for c in np.unique(y))
 
-    def get_split(self, dataset):
-        class_values = list(set(row[-1] for row in dataset))
-        b_index, b_value, b_score, b_groups = 999, 999, 999, None
-        for index in range(len(dataset[0])-1):
-            for row in dataset:
-                groups = self.test_split(index, row[index], dataset)
-                gini = self.gini_index(groups, class_values)
-                if gini < b_score:
-                    b_index, b_value, b_score, b_groups = index, row[index], gini, groups
-        return {'index': b_index, 'value': b_value, 'groups': b_groups}
+    def _best_split(self, X, y):
+        m, n = X.shape
+        if m <= self.min_samples_split:
+            return None, None
 
-    def test_split(self, index, value, dataset):
-        left, right = list(), list()
-        for row in dataset:
-            if row[index] < value:
-                left.append(row)
+        best_gini = 1.0
+        best_idx, best_thr = None, None
+
+        for idx in range(n):
+            thresholds, classes = zip(*sorted(zip(X[:, idx], y)))
+            for i in range(1, m):
+                y_left, y_right = classes[:i], classes[i:]
+                gini_left, gini_right = self._gini(y_left), self._gini(y_right)
+                gini = (i * gini_left + (m - i) * gini_right) / m
+
+                if thresholds[i] == thresholds[i - 1]:
+                    continue
+
+                if gini < best_gini:
+                    best_gini = gini
+                    best_idx = idx
+                    best_thr = (thresholds[i] + thresholds[i - 1]) / 2
+
+        return best_idx, best_thr
+
+    def _grow_tree(self, X, y, depth=0):
+        num_samples_per_class = [np.sum(y == i) for i in range(self.n_classes)]
+        predicted_class = np.argmax(num_samples_per_class)
+        node = DecisionTreeNode(
+            impurity=self._gini(y),
+            num_samples=len(y),
+            value=predicted_class
+        )
+
+        if depth < self.max_depth:
+            idx, thr = self._best_split(X, y)
+            if idx is not None:
+                indices_left = X[:, idx] < thr
+                X_left, y_left = X[indices_left], y[indices_left]
+                X_right, y_right = X[~indices_left], y[~indices_left]
+                node.feature_index = idx
+                node.threshold = thr
+                node.left = self._grow_tree(X_left, y_left, depth + 1)
+                node.right = self._grow_tree(X_right, y_right, depth + 1)
+
+        return node
+
+    def _predict(self, inputs):
+        node = self.tree
+        while node.left:
+            if inputs[node.feature_index] < node.threshold:
+                node = node.left
             else:
-                right.append(row)
-        return left, right
+                node = node.right
+        return node.value
+    
+class DecisionTreeRegressor:
+    def __init__(self, max_depth=None, min_samples_split=2):
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.tree = None
 
-    def gini_index(self, groups, classes):
-        n_instances = float(sum([len(group) for group in groups]))
-        gini = 0.0
-        for group in groups:
-            size = float(len(group))
-            if size == 0:
-                continue
-            score = 0.0
-            for class_val in classes:
-                p = [row[-1] for row in group].count(class_val) / size
-                score += p * p
-            gini += (1.0 - score) * (size / n_instances)
-        return gini
+    def fit(self, X, y):
+        self.tree = self._grow_tree(X, y)
 
-    def to_terminal(self, group):
-        outcomes = [row[-1] for row in group]
-        return max(set(outcomes), key=outcomes.count)
+    def predict(self, X):
+        return np.array([self._predict(inputs) for inputs in X])
 
-    def split(self, node, depth):
-        left, right = node['groups']
-        del(node['groups'])
-        if not left or not right:
-            node['left'] = node['right'] = self.to_terminal(left + right)
-            return
-        if depth >= self.max_depth:
-            node['left'], node['right'] = self.to_terminal(left), self.to_terminal(right)
-            return
-        if len(left) <= self.min_size:
-            node['left'] = self.to_terminal(left)
-        else:
-            node['left'] = self.get_split(left)
-            self.split(node['left'], depth+1)
-        if len(right) <= self.min_size:
-            node['right'] = self.to_terminal(right)
-        else:
-            node['right'] = self.get_split(right)
-            self.split(node['right'], depth+1)
+    def _mse(self, y):
+        if len(y) == 0:
+            return 0
+        return np.mean((y - np.mean(y)) ** 2)
 
-    def _predict(self, node, row):
-        if row[node['index']] < node['value']:
-            if isinstance(node['left'], dict):
-                return self._predict(node['left'], row)
+    def _best_split(self, X, y):
+        m, n = X.shape
+        if m <= self.min_samples_split:
+            return None, None
+
+        best_mse = self._mse(y)
+        best_idx, best_thr = None, None
+
+        for idx in range(n):
+            thresholds, values = zip(*sorted(zip(X[:, idx], y)))
+            for i in range(1, m):
+                y_left, y_right = values[:i], values[i:]
+                mse_left, mse_right = self._mse(y_left), self._mse(y_right)
+                mse = (i * mse_left + (m - i) * mse_right) / m
+
+                if thresholds[i] == thresholds[i - 1]:
+                    continue
+
+                if mse < best_mse:
+                    best_mse = mse
+                    best_idx = idx
+                    best_thr = (thresholds[i] + thresholds[i - 1]) / 2
+
+        return best_idx, best_thr
+
+    def _grow_tree(self, X, y, depth=0):
+        value = np.mean(y)
+        node = DecisionTreeNode(
+            impurity=self._mse(y),
+            num_samples=len(y),
+            value=value
+        )
+
+        if depth < self.max_depth:
+            idx, thr = self._best_split(X, y)
+            if idx is not None:
+                indices_left = X[:, idx] < thr
+                X_left, y_left = X[indices_left], y[indices_left]
+                X_right, y_right = X[~indices_left], y[~indices_left]
+                node.feature_index = idx
+                node.threshold = thr
+                node.left = self._grow_tree(X_left, y_left, depth + 1)
+                node.right = self._grow_tree(X_right, y_right, depth + 1)
+
+        return node
+
+    def _predict(self, inputs):
+        node = self.tree
+        while node.left:
+            if inputs[node.feature_index] < node.threshold:
+                node = node.left
             else:
-                return node['left']
-        else:
-            if isinstance(node['right'], dict):
-                return self._predict(node['right'], row)
-            else:
-                return node['right']
-
-# Пример использования класса CART
-# Создаем небольшой датасет
-X = [[2.771244718, 1.784783929],
-     [1.728571309, 1.169761413],
-     [3.678319846, 2.81281357],
-     [3.961043357, 2.61995032],
-     [2.999208922, 2.209014212],
-     [7.497545867, 3.162953546],
-     [9.00220326, 3.339047188],
-     [7.444542326, 0.476683375],
-     [10.12493903, 3.234550982],
-     [6.642287351, 3.319983761]]
-y = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
-
-max_depth = 3
-min_size = 1
-cart = CART(max_depth, min_size)
-cart.fit(X, y)
-
-# Прогнозирование для нового набора данных
-for row in X:
-    prediction = cart.predict(row)
-    print('Predicted=%d' % prediction)
+                node = node.right
+        return node.value
